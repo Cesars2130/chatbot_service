@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 
-// Modelo de Categorías del Chatbot
+
 const ChatbotCategory = sequelize.define('ChatbotCategory', {
   id: {
     type: DataTypes.INTEGER,
@@ -18,7 +18,7 @@ const ChatbotCategory = sequelize.define('ChatbotCategory', {
   timestamps: false
 });
 
-// Modelo de Preguntas del Chatbot
+
 const ChatbotQuestion = sequelize.define('ChatbotQuestion', {
   id: {
     type: DataTypes.INTEGER,
@@ -28,7 +28,7 @@ const ChatbotQuestion = sequelize.define('ChatbotQuestion', {
   user_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    // Removida la referencia a la tabla users para microservicios
+
     comment: 'ID del usuario (referencia externa desde otro microservicio)'
   },
   question: {
@@ -53,10 +53,10 @@ const ChatbotQuestion = sequelize.define('ChatbotQuestion', {
   timestamps: false
 });
 
-// Definir las relaciones (solo con categorías)
+
 ChatbotQuestion.belongsTo(ChatbotCategory, { foreignKey: 'category_id' });
 
-// Función para inicializar las categorías por defecto
+
 const initializeCategories = async () => {
   try {
     const categories = [
@@ -74,9 +74,9 @@ const initializeCategories = async () => {
       });
     }
     
-    console.log('✅ Categorías del chatbot inicializadas correctamente');
+    console.log(' Categorías del chatbot inicializadas correctamente');
   } catch (error) {
-    console.error('❌ Error inicializando categorías:', error);
+    console.error(' Error inicializando categorías:', error);
   }
 };
 

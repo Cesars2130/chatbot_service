@@ -1,8 +1,6 @@
 const Joi = require('joi');
 
-/**
- * Esquema de validación para clasificación de preguntas
- */
+
 const questionClassificationSchema = Joi.object({
   question: Joi.string()
     .required()
@@ -53,7 +51,7 @@ const validateQuestionInput = (req, res, next) => {
     next();
     
   } catch (validationError) {
-    console.error('❌ Error en validación:', validationError);
+    console.error('Error en validación:', validationError);
     return res.status(500).json({
       success: false,
       error: 'Error interno en validación'
@@ -106,7 +104,7 @@ const validateUserId = (req, res, next) => {
     next();
     
   } catch (validationError) {
-    console.error('❌ Error en validación de userId:', validationError);
+    console.error(' Error en validación de userId:', validationError);
     return res.status(500).json({
       success: false,
       error: 'Error interno en validación'

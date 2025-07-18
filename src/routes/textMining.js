@@ -116,12 +116,12 @@ router.post('/classify', validateQuestionInput, async (req, res) => {
       timestamp: new Date().toISOString()
     };
     
-    console.log(`✅ Pregunta clasificada como: ${classificationResult.category} (confianza: ${classificationResult.confidence})`);
+    console.log(` Pregunta clasificada como: ${classificationResult.category} (confianza: ${classificationResult.confidence})`);
     
     res.json(response);
     
   } catch (error) {
-    console.error('❌ Error en clasificación:', error);
+    console.error(' Error en clasificación:', error);
     res.status(500).json({
       success: false,
       error: 'Error al clasificar la pregunta',
@@ -202,7 +202,7 @@ router.get('/stats/:userId', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Error obteniendo estadísticas:', error);
+    console.error(' Error obteniendo estadísticas:', error);
     res.status(500).json({
       success: false,
       error: 'Error al obtener estadísticas',
@@ -311,7 +311,6 @@ router.get('/stats/:userId/weekly', async (req, res) => {
     const { userId } = req.params;
     const days = parseInt(req.query.days) || 7;
     
-    // Validar que days esté entre 1 y 30
     if (days < 1 || days > 30) {
       return res.status(400).json({
         success: false,
@@ -328,7 +327,7 @@ router.get('/stats/:userId/weekly', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Error obteniendo estadísticas semanales:', error);
+    console.error(' Error obteniendo estadísticas semanales:', error);
     res.status(500).json({
       success: false,
       error: 'Error al obtener estadísticas semanales',

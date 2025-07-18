@@ -1,7 +1,5 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
-
-// Configuración de la base de datos
 const sequelize = new Sequelize(
   process.env.DB_NAME ,
   process.env.DB_USER ,
@@ -24,38 +22,34 @@ const sequelize = new Sequelize(
   }
 );
 
-/**
- * Inicializa la conexión a la base de datos
- */
+
 async function initializeDatabase() {
   try {
-    console.log('🔌 Conectando a la base de datos...');
+    console.log('Conectando a la base de datos...');
     
-    // Probar conexión
     await sequelize.authenticate();
-    console.log('✅ Conexión a la base de datos establecida correctamente');
+    console.log('Conexión a la base de datos establecida correctamente');
     
-    // Sincronizar modelos (crear tablas si no existen)
     await sequelize.sync({ alter: true });
-    console.log('✅ Modelos sincronizados con la base de datos');
+    console.log('Modelos sincronizados con la base de datos');
     
     return true;
   } catch (error) {
-    console.error('❌ Error conectando a la base de datos:', error);
+    console.error('Error conectando a la base de datos:', error);
     throw error;
   }
 }
 
-/**
- * Prueba la conexión a la base de datos
- */
+  /**
+   * Prueba la conexión a la base de datos
+   */
 async function testConnection() {
   try {
     await sequelize.authenticate();
-    console.log('✅ Conexión a la base de datos exitosa');
+    console.log('Conexión a la base de datos exitosa');
     return true;
   } catch (error) {
-    console.error('❌ Error de conexión a la base de datos:', error);
+    console.error('Error de conexión a la base de datos:', error);
     throw error;
   }
 }
@@ -66,9 +60,9 @@ async function testConnection() {
 async function closeConnection() {
   try {
     await sequelize.close();
-    console.log('🔌 Conexión a la base de datos cerrada');
+    console.log('Conexión a la base de datos cerrada');
   } catch (error) {
-    console.error('❌ Error cerrando conexión:', error);
+    console.error('Error cerrando conexión:', error);
   }
 }
 

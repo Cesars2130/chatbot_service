@@ -1,15 +1,11 @@
 const { ChatbotQuestion, ChatbotCategory } = require('../models');
 const { Op } = require('sequelize');
 
-/**
- * Servicio para manejar estadísticas de usuario y métricas ponderadas
- * Implementa la lógica de contadores y cálculos de características usando MySQL
- * Diseñado para microservicios - no requiere verificación de usuario
- */
+
 
 class UserStatsService {
   constructor() {
-    // Pesos de las categorías según la especificación
+
     this.categoryWeights = {
       entrenamiento: 3,
       nutricion: 2,
@@ -19,16 +15,12 @@ class UserStatsService {
     };
   }
 
-  /**
-   * Obtiene las estadísticas actuales de un usuario desde la base de datos
-   * @param {number} userId - ID del usuario (referencia externa)
-   * @returns {Object} - Estadísticas del usuario
-   */
+
   async getUserStats(userId) {
     try {
       console.log(`📊 Obteniendo estadísticas para usuario ${userId}`);
       
-      // Obtener conteo de preguntas por categoría
+
       const questionStats = await ChatbotQuestion.findAll({
         where: { user_id: userId },
         include: [{
@@ -42,7 +34,7 @@ class UserStatsService {
         group: ['category_id', 'ChatbotCategory.name']
       });
 
-      // Inicializar contadores
+
       const stats = {
         preguntas_nutricion: 0,
         preguntas_entrenamiento: 0,
@@ -52,7 +44,7 @@ class UserStatsService {
         ultima_actualizacion: new Date().toISOString()
       };
 
-      // Mapear resultados de la consulta
+
       const categoryMapping = {
         'nutricion': 'preguntas_nutricion',
         'entrenamiento': 'preguntas_entrenamiento',
@@ -69,30 +61,25 @@ class UserStatsService {
         }
       });
 
-      // Calcular score ponderado
+
       const weightedScore = this.calculateWeightedScore(stats);
       stats.score_ponderado = weightedScore;
 
-      console.log(`✅ Estadísticas obtenidas para usuario ${userId}:`, stats);
+      console.log(`Estadísticas obtenidas para usuario ${userId}:`, stats);
       return stats;
 
     } catch (error) {
-      console.error('❌ Error obteniendo estadísticas:', error);
+      console.error(' Error obteniendo estadísticas:', error);
       throw new Error(`Error al obtener estadísticas: ${error.message}`);
     }
   }
 
-  /**
-   * Actualiza las estadísticas de un usuario después de una clasificación
-   * @param {number} userId - ID del usuario (referencia externa)
-   * @param {string} category - Categoría de la pregunta
-   * @returns {Object} - Estadísticas actualizadas
-   */
+
   async updateUserStats(userId, category) {
     try {
-      console.log(`📊 Actualizando estadísticas para usuario ${userId}, categoría: ${category}`);
+      console.log(`Actualizando estadísticas para usuario ${userId}, categoría: ${category}`);
       
-      // Obtener el ID de la categoría
+
       const categoryRecord = await ChatbotCategory.findOne({
         where: { name: category }
       });
@@ -101,30 +88,24 @@ class UserStatsService {
         throw new Error(`Categoría no encontrada: ${category}`);
       }
 
-      // Obtener estadísticas actuales
+
       const stats = await this.getUserStats(userId);
       
-      console.log(`✅ Estadísticas actualizadas para usuario ${userId}`);
+      console.log(`Estadísticas actualizadas para usuario ${userId}`);
       return stats;
 
     } catch (error) {
-      console.error('❌ Error actualizando estadísticas:', error);
+      console.error(' Error actualizando estadísticas:', error);
       throw new Error(`Error al actualizar estadísticas: ${error.message}`);
     }
   }
 
-  /**
-   * Guarda una pregunta clasificada en la base de datos
-   * @param {number} userId - ID del usuario (referencia externa)
-   * @param {string} question - Pregunta del usuario
-   * @param {string} category - Categoría clasificada
-   * @returns {Object} - Pregunta guardada
-   */
+
   async saveQuestion(userId, question, category) {
     try {
-      console.log(`💾 Guardando pregunta para usuario ${userId}, categoría: ${category}`);
+      console.log(`Guardando pregunta para usuario ${userId}, categoría: ${category}`);
       
-      // Obtener el ID de la categoría
+
       const categoryRecord = await ChatbotCategory.findOne({
         where: { name: category }
       });
@@ -133,7 +114,7 @@ class UserStatsService {
         throw new Error(`Categoría no encontrada: ${category}`);
       }
 
-      // Guardar la pregunta en la base de datos
+
       const savedQuestion = await ChatbotQuestion.create({
         user_id: userId,
         question: question,
@@ -141,11 +122,11 @@ class UserStatsService {
         created_at: new Date()
       });
 
-      console.log(`✅ Pregunta guardada con ID: ${savedQuestion.id}`);
+      console.log(`Pregunta guardada con ID: ${savedQuestion.id}`);
       return savedQuestion;
 
     } catch (error) {
-      console.error('❌ Error guardando pregunta:', error);
+      console.error(' Error guardando pregunta:', error);
       throw new Error(`Error al guardar pregunta: ${error.message}`);
     }
   }
