@@ -11,7 +11,8 @@
     "docs": "jsdoc src/ -d docs",
     "demo": "node demo/test-classification.js",
     "test-db": "node demo/test-database.js",
-    "test-keywords": "node demo/test-expanded-keywords.js"
+    "test-keywords": "node demo/test-expanded-keywords.js",
+    "test-logs": "node demo/test-logs.js"
   },
   "keywords": [
     "text-mining",

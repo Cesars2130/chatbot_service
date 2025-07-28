@@ -97,16 +97,29 @@ router.post('/classify', validateQuestionInput, async (req, res) => {
   try {
     const { question, userId } = req.body;
     
-    console.log(`🔍 Clasificando pregunta para usuario ${userId}: "${question}"`);
+    console.log('📥 DATOS DE ENTRADA:');
+    console.log(`   - Usuario ID: ${userId}`);
+    console.log(`   - Pregunta: "${question}"`);
+    console.log(`   - Timestamp: ${new Date().toISOString()}`);
     
     // Clasificar la pregunta
     const classificationResult = await classifyQuestion(question);
     
+    console.log('🔍 RESULTADO DE CLASIFICACIÓN:');
+    console.log(`   - Categoría: ${classificationResult.category}`);
+    console.log(`   - Confianza: ${classificationResult.confidence}%`);
+    console.log(`   - Texto procesado: "${classificationResult.processedText}"`);
+    console.log(`   - Scores por categoría:`, classificationResult.scores);
+    
     // Guardar la pregunta en la base de datos
     await saveQuestion(userId, question, classificationResult.category);
+    console.log('💾 Pregunta guardada en BD');
     
     // Actualizar estadísticas del usuario
     const userStats = await updateUserStats(userId, classificationResult.category);
+    
+    console.log('📊 ESTADÍSTICAS ACTUALIZADAS:');
+    console.log(`   - Usuario ${userId}:`, userStats);
     
     const response = {
       success: true,
@@ -116,12 +129,16 @@ router.post('/classify', validateQuestionInput, async (req, res) => {
       timestamp: new Date().toISOString()
     };
     
-    console.log(` Pregunta clasificada como: ${classificationResult.category} (confianza: ${classificationResult.confidence})`);
+    console.log('📤 RESPUESTA ENVIADA:');
+    console.log('   - Status: 200 OK');
+    console.log('   - Response:', JSON.stringify(response, null, 2));
     
     res.json(response);
     
   } catch (error) {
-    console.error(' Error en clasificación:', error);
+    console.error('❌ ERROR EN CLASIFICACIÓN:');
+    console.error(`   - Mensaje: ${error.message}`);
+    console.error(`   - Stack: ${error.stack}`);
     res.status(500).json({
       success: false,
       error: 'Error al clasificar la pregunta',
@@ -191,18 +208,33 @@ router.get('/stats/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     
+    console.log('📊 SOLICITUD DE ESTADÍSTICAS:');
+    console.log(`   - Usuario ID: ${userId}`);
+    console.log(`   - Timestamp: ${new Date().toISOString()}`);
+    
     const stats = await getUserStats(parseInt(userId));
     
-    res.json({
+    console.log('📈 ESTADÍSTICAS OBTENIDAS:');
+    console.log(`   - Usuario ${userId}:`, stats);
+    
+    const response = {
       success: true,
       stats: {
         userId: parseInt(userId),
         ...stats
       }
-    });
+    };
+    
+    console.log('📤 RESPUESTA DE ESTADÍSTICAS:');
+    console.log('   - Status: 200 OK');
+    console.log('   - Response:', JSON.stringify(response, null, 2));
+    
+    res.json(response);
     
   } catch (error) {
-    console.error(' Error obteniendo estadísticas:', error);
+    console.error('❌ ERROR OBTENIENDO ESTADÍSTICAS:');
+    console.error(`   - Usuario: ${req.params.userId}`);
+    console.error(`   - Mensaje: ${error.message}`);
     res.status(500).json({
       success: false,
       error: 'Error al obtener estadísticas',
@@ -311,7 +343,15 @@ router.get('/stats/:userId/weekly', async (req, res) => {
     const { userId } = req.params;
     const days = parseInt(req.query.days) || 7;
     
+    console.log('📊 SOLICITUD DE ESTADÍSTICAS SEMANALES:');
+    console.log(`   - Usuario ID: ${userId}`);
+    console.log(`   - Días: ${days}`);
+    console.log(`   - Timestamp: ${new Date().toISOString()}`);
+    
     if (days < 1 || days > 30) {
+      console.log('❌ PARÁMETRO DAYS INVÁLIDO:');
+      console.log(`   - Valor recibido: ${days}`);
+      console.log(`   - Rango válido: 1-30`);
       return res.status(400).json({
         success: false,
         error: 'Parámetro days inválido',
@@ -321,13 +361,25 @@ router.get('/stats/:userId/weekly', async (req, res) => {
     
     const stats = await getUserWeeklyStats(parseInt(userId), days);
     
-    res.json({
+    console.log('📈 ESTADÍSTICAS SEMANALES OBTENIDAS:');
+    console.log(`   - Usuario ${userId}:`, JSON.stringify(stats, null, 2));
+    
+    const response = {
       success: true,
       ...stats
-    });
+    };
+    
+    console.log('📤 RESPUESTA DE ESTADÍSTICAS SEMANALES:');
+    console.log('   - Status: 200 OK');
+    console.log('   - Response:', JSON.stringify(response, null, 2));
+    
+    res.json(response);
     
   } catch (error) {
-    console.error(' Error obteniendo estadísticas semanales:', error);
+    console.error('❌ ERROR OBTENIENDO ESTADÍSTICAS SEMANALES:');
+    console.error(`   - Usuario: ${req.params.userId}`);
+    console.error(`   - Días: ${req.query.days || 7}`);
+    console.error(`   - Mensaje: ${error.message}`);
     res.status(500).json({
       success: false,
       error: 'Error al obtener estadísticas semanales',

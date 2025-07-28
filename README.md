@@ -5,11 +5,24 @@ Servicio de microservicios para clasificación automática de preguntas del chat
 ## 🚀 Características
 
 - **Clasificación Automática**: Analiza preguntas y las clasifica en 5 categorías de fitness
+- **Lematización avanzada**: El texto y el banco de palabras clave se lematizan para mejorar la robustez ante variantes gramaticales.
+- **Tolerancia a errores ortográficos**: Se utiliza la distancia de Levenshtein para detectar palabras clave aunque el usuario escriba con errores menores (hasta 2 letras de diferencia).
 - **Base de Datos MySQL**: Almacenamiento persistente con Sequelize ORM
 - **API RESTful**: Endpoints bien documentados con Swagger
 - **Estadísticas de Usuario**: Seguimiento de preguntas por categoría
 - **Health Checks**: Monitoreo de salud del servicio
 - **Arquitectura de Microservicios**: Servicio independiente sin dependencias externas
+
+---
+
+### ¿Cómo funciona la clasificación?
+
+1. **Lematización**: Todas las palabras del texto y del banco de palabras clave se reducen a su forma base (ej: "corriendo" → "correr").
+2. **Comparación flexible**: Si una palabra del usuario no coincide exactamente con una palabra clave, se calcula la distancia de Levenshtein. Si la distancia es ≤ 2, se considera coincidencia parcial.
+3. **Ponderación**: Las coincidencias exactas tienen mayor peso, las aproximadas menor, y se calcula un score ponderado por categoría.
+4. **Resultado**: Se retorna la categoría con mayor score y el nivel de confianza.
+
+---
 
 ## 📋 Categorías de Clasificación
 

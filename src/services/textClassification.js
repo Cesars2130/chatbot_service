@@ -1,7 +1,10 @@
 const natural = require('natural');
 const nlp = require('compromise');
 
-
+/**
+ * Servicio de clasificación de texto para preguntas de fitness
+ * Mejorado: Lematización robusta y comparación con distancia de Levenshtein
+ */
 class TextClassificationService {
   constructor() {
     this.categories = {
@@ -124,45 +127,68 @@ class TextClassificationService {
     this.tokenizer = new natural.WordTokenizer();
   }
 
-
+  /**
+   * Preprocesa y lematiza el texto para mejorar la clasificación
+   * @param {string} text - Texto a preprocesar
+   * @returns {Array} - Array de lemas (palabras base)
+   */
   preprocessText(text) {
     if (!text || typeof text !== 'string') {
       throw new Error('El texto debe ser una cadena válida');
     }
-    console.log(`preprocesando textooooooooo ${text}` );
-
     let processedText = text.toLowerCase();
-    
-    processedText = processedText.replace(/[^\w\sáéíóúñü]/g, ' ');
-    
+    processedText = processedText.replace(/[^ -\w\sáéíóúñü]/g, ' ');
     processedText = processedText.replace(/\s+/g, ' ').trim();
-    
     const doc = nlp(processedText);
-    processedText = doc.normalize().text();
-    
-    return processedText;
+    // Usar compromise para lematizar
+    const lemmatized = doc.terms().out('array').map(t => nlp(t).normalize().terms().out('lemma'));
+    // Si compromise no lematiza, usar el token original
+    return lemmatized.map((lemma, i) => lemma || doc.terms().out('array')[i]);
   }
 
+  /**
+   * Lematiza el banco de palabras clave de cada categoría
+   * @param {Array} keywords - Palabras clave originales
+   * @returns {Array} - Palabras clave lematizadas
+   */
+  lemmatizeKeywords(keywords) {
+    return keywords.map(word => {
+      const doc = nlp(word.toLowerCase());
+      const lemma = doc.terms().out('lemma');
+      return lemma || word.toLowerCase();
+    });
+  }
 
-  calculateSimilarity(text, category) {
-    const categoryKeywords = this.categories[category].keywords;
-    const tokens = this.tokenizer.tokenize(text);
-    
-    if (!tokens || tokens.length === 0) return 0;
-    
+  /**
+   * Calcula la similitud entre el texto y una categoría usando lematización y distancia de Levenshtein
+   * @param {Array} tokens - Lemas del texto a clasificar
+   * @param {string} category - Categoría a evaluar
+   * @returns {Object} - Score de similitud
+   */
+  calculateSimilarity(tokens, category) {
+    // Lematizar el banco de palabras clave
+    const categoryKeywords = this.lemmatizeKeywords(this.categories[category].keywords);
     let matchCount = 0;
     let totalScore = 0;
-    
+    const levenshteinThreshold = 2; // Permitir hasta 2 cambios
     tokens.forEach(token => {
+      // Coincidencia exacta
       if (categoryKeywords.includes(token)) {
-        matchCount++; 
+        matchCount++;
         totalScore += 1;
+      } else {
+        // Coincidencia por Levenshtein
+        for (const keyword of categoryKeywords) {
+          if (natural.LevenshteinDistance(token, keyword, {search: true}) <= levenshteinThreshold) {
+            matchCount++;
+            totalScore += 0.7; // Menor peso para coincidencia aproximada
+            break;
+          }
+        }
       }
     });
-    
     const baseScore = (matchCount / tokens.length) * 100;
     const weightedScore = baseScore * this.categories[category].weight;
-    
     return {
       score: weightedScore,
       matchCount,
@@ -171,70 +197,45 @@ class TextClassificationService {
     };
   }
 
-  
+  /**
+   * Clasifica una pregunta usando lematización y Levenshtein
+   * @param {string} question - Pregunta a clasificar
+   * @returns {Object} - Resultado de la clasificación
+   */
   async classifyQuestion(question) {
     try {
-      console.log(` Iniciando clasificación de: "${question}"`);
-      
-      const processedText = this.preprocessText(question);
-      console.log(` Texto preprocesado: "${processedText}"`);
-      
+      const tokens = this.preprocessText(question);
       const scores = {};
       let maxScore = 0;
       let bestCategory = null;
       let bestMatchCount = 0;
-      
+
       for (const category of Object.keys(this.categories)) {
-        const similarity = this.calculateSimilarity(processedText, category);
+        const similarity = this.calculateSimilarity(tokens, category);
         scores[category] = similarity;
-        
-        if (
-          similarity.score > maxScore ||
-          (similarity.score === maxScore && similarity.matchCount > bestMatchCount)
-        ) {
+
+        if (similarity.score > maxScore || (similarity.score === maxScore && similarity.matchCount > bestMatchCount)) {
           maxScore = similarity.score;
           bestCategory = category;
           bestMatchCount = similarity.matchCount;
         }
       }
-      
-      
-      const recoveryStrongWords = [
-        'estiramiento', 'estirar', 'estiramientos', 'flexibilidad', 'yoga', 'pilates',
-        'foam roller', 'rodillo', 'masaje', 'relajación', 'relajar', 'dormir', 'sueño',
-        'descanso', 'descansar', 'recuperación', 'recuperar', 'fatiga', 'cansancio'
-      ];
-      
-      const equipStrongWords = [
-        'zapatillas', 'tenis', 'calzado', 'ropa', 'camiseta', 'pantalón', 'short',
-        'reloj', 'smartwatch', 'pulsómetro', 'auriculares', 'audífonos', 'mochila',
-        'botella', 'cinturón', 'bandas elásticas', 'pesas', 'mancuernas',
-        'nike', 'adidas', 'garmin', 'fitbit', 'under armour'
-      ];
-      
-      const nutritionStrongWords = [
-        'comer', 'alimentación', 'dieta', 'nutrición', 'proteína', 'proteínas',
-        'calorías', 'suplementos', 'desayuno', 'almuerzo', 'cena', 'batido',
-        'agua', 'hidratación', 'creatina', 'bcaa'
-      ];
-      
-      const preventionStrongWords = [
-        'lesión', 'lesiones', 'prevención', 'prevenir', 'dolor', 'molestia',
-        'vendaje', 'fortalecimiento', 'estabilidad', 'propiocepción'
-      ];
-      
+
+      // Lógica de palabras fuertes actualizada para usar Levenshtein
       const strongWordsMap = {
-        'recuperacion': recoveryStrongWords,
-        'equipamiento': equipStrongWords,
-        'nutricion': nutritionStrongWords,
-        'prevencion': preventionStrongWords
+        nutricion: ['proteína', 'dieta', 'comer', 'alimentación', 'nutrición', 'calorías', 'hidratación'],
+        entrenamiento: ['ejercicio', 'entrenar', 'rutina', 'correr', 'resistencia', 'velocidad', 'fuerza'],
+        recuperacion: ['descanso', 'recuperación', 'estirar', 'estiramiento', 'relajar', 'dormir'],
+        prevencion: ['lesión', 'prevención', 'dolor', 'seguridad', 'proteger', 'cuidar'],
+        equipamiento: ['zapatillas', 'ropa', 'calzado', 'equipo', 'accesorio', 'tecnología']
       };
-      
+
       for (const [category, strongWords] of Object.entries(strongWordsMap)) {
-        const hasStrongWords = strongWords.some(word => processedText.includes(word));
+        const hasStrongWords = strongWords.some(word => 
+          tokens.some(token => natural.LevenshteinDistance(token, word, { search: true }) <= 2)
+        );
         if (hasStrongWords && scores[category].matchCount > 0) {
           scores[category].score *= 2;
-          
           if (scores[category].score > maxScore) {
             maxScore = scores[category].score;
             bestCategory = category;
@@ -242,31 +243,34 @@ class TextClassificationService {
           }
         }
       }
-      
+
       const totalScore = Object.values(scores).reduce((sum, s) => sum + s.score, 0);
       const confidence = totalScore > 0 ? (maxScore / totalScore) * 100 : 0;
-      
+
       if (confidence < 20) {
-        bestCategory = 'entrenamiento'; 
-        console.log(` Confianza baja (${confidence.toFixed(2)}%), usando categoría por defecto`);
+        bestCategory = 'entrenamiento';
       }
-      
-      const result = {
-        category: bestCategory,
+
+      // Mapear categoría interna a nombre de BD
+      const categoryMapping = {
+        'nutricion': 'Nutrición',
+        'entrenamiento': 'Entrenamiento',
+        'recuperacion': 'Recuperación',
+        'prevencion': 'Prevención',
+        'equipamiento': 'Equipamiento'
+      };
+
+      const dbCategoryName = categoryMapping[bestCategory] || bestCategory;
+
+      return {
+        category: dbCategoryName, // Usar nombre de BD
         confidence: Math.round(confidence * 100) / 100,
         scores: scores,
-        processedText: processedText,
+        processedText: tokens.join(' '),
         originalText: question
       };
-      
-      console.log(`Clasificación completada: ${bestCategory} (confianza: ${confidence.toFixed(2)}%)`);
-      console.log(`Scores por categoría:`, scores);
-      console.log(`aaaaaaa ya me aburri`);
-      
-      return result;
-      
     } catch (error) {
-      console.error(' Error en clasificación:', error);
+      console.error('❌ Error en clasificación:', error);
       throw new Error(`Error al clasificar la pregunta: ${error.message}`);
     }
   }

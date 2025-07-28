@@ -16,17 +16,16 @@ class UserStatsService {
   }
 
 
+  /**
+   * Obtiene las estadísticas de un usuario desde la base de datos
+   * @param {number} userId - ID del usuario
+   * @returns {Object} - Estadísticas del usuario
+   */
   async getUserStats(userId) {
     try {
-      console.log(`📊 Obteniendo estadísticas para usuario ${userId}`);
-      
-
       const questionStats = await ChatbotQuestion.findAll({
         where: { user_id: userId },
-        include: [{
-          model: ChatbotCategory,
-          attributes: ['name']
-        }],
+        include: [{ model: ChatbotCategory, attributes: ['name'] }],
         attributes: [
           [ChatbotQuestion.sequelize.fn('COUNT', ChatbotQuestion.sequelize.col('ChatbotQuestion.id')), 'count'],
           'category_id'
@@ -34,42 +33,42 @@ class UserStatsService {
         group: ['category_id', 'ChatbotCategory.name']
       });
 
-
+      // Inicializar estadísticas
       const stats = {
         preguntas_nutricion: 0,
         preguntas_entrenamiento: 0,
         preguntas_recuperacion: 0,
         preguntas_prevencion_lesiones: 0,
         preguntas_equipamiento: 0,
+        score_ponderado: 0,
+        total_preguntas: 0,
         ultima_actualizacion: new Date().toISOString()
       };
 
-
+      // Mapear resultados de la BD a los nombres esperados
       const categoryMapping = {
-        'nutricion': 'preguntas_nutricion',
-        'entrenamiento': 'preguntas_entrenamiento',
-        'recuperacion': 'preguntas_recuperacion',
-        'prevencion': 'preguntas_prevencion_lesiones',
-        'equipamiento': 'preguntas_equipamiento'
+        'Nutrición': 'preguntas_nutricion',
+        'Entrenamiento': 'preguntas_entrenamiento', 
+        'Recuperación': 'preguntas_recuperacion',
+        'Prevención': 'preguntas_prevencion_lesiones',
+        'Equipamiento': 'preguntas_equipamiento'
       };
 
       questionStats.forEach(stat => {
         const categoryName = stat.ChatbotCategory.name;
-        const fieldName = categoryMapping[categoryName];
-        if (fieldName) {
-          stats[fieldName] = parseInt(stat.dataValues.count);
+        const mappedKey = categoryMapping[categoryName];
+        if (mappedKey) {
+          stats[mappedKey] = parseInt(stat.dataValues.count);
+          stats.total_preguntas += parseInt(stat.dataValues.count);
         }
       });
 
+      // Calcular score ponderado
+      stats.score_ponderado = this.calculateWeightedScore(stats);
 
-      const weightedScore = this.calculateWeightedScore(stats);
-      stats.score_ponderado = weightedScore;
-
-      console.log(`Estadísticas obtenidas para usuario ${userId}:`, stats);
       return stats;
-
     } catch (error) {
-      console.error(' Error obteniendo estadísticas:', error);
+      console.error('❌ Error obteniendo estadísticas del usuario:', error);
       throw new Error(`Error al obtener estadísticas: ${error.message}`);
     }
   }
@@ -101,33 +100,37 @@ class UserStatsService {
   }
 
 
-  async saveQuestion(userId, question, category) {
+  /**
+   * Guarda una pregunta clasificada en la base de datos
+   * @param {number} userId - ID del usuario
+   * @param {string} question - Pregunta del usuario
+   * @param {string} categoryName - Nombre de la categoría
+   * @returns {Object} - Pregunta guardada
+   */
+  async saveQuestion(userId, question, categoryName) {
     try {
-      console.log(`Guardando pregunta para usuario ${userId}, categoría: ${category}`);
-      
-
-      const categoryRecord = await ChatbotCategory.findOne({
-        where: { name: category }
+      // Buscar la categoría por nombre
+      const category = await ChatbotCategory.findOne({
+        where: { name: categoryName }
       });
 
-      if (!categoryRecord) {
-        throw new Error(`Categoría no encontrada: ${category}`);
+      if (!category) {
+        throw new Error(`Categoría no encontrada: ${categoryName}`);
       }
 
-
+      // Guardar la pregunta
       const savedQuestion = await ChatbotQuestion.create({
         user_id: userId,
         question: question,
-        category_id: categoryRecord.id,
+        category_id: category.id,
         created_at: new Date()
       });
 
-      console.log(`Pregunta guardada con ID: ${savedQuestion.id}`);
+      console.log(`💾 Pregunta guardada: ID=${savedQuestion.id}, Usuario=${userId}, Categoría=${categoryName}`);
       return savedQuestion;
-
     } catch (error) {
-      console.error(' Error guardando pregunta:', error);
-      throw new Error(`Error al guardar pregunta: ${error.message}`);
+      console.error('❌ Error guardando pregunta:', error);
+      throw new Error(`Error al guardar la pregunta: ${error.message}`);
     }
   }
 
@@ -302,10 +305,7 @@ class UserStatsService {
             [Op.between]: [startDate, endDate]
           }
         },
-        include: [{
-          model: ChatbotCategory,
-          attributes: ['name']
-        }],
+        include: [{ model: ChatbotCategory, attributes: ['name'] }],
         attributes: [
           [ChatbotQuestion.sequelize.fn('COUNT', ChatbotQuestion.sequelize.col('ChatbotQuestion.id')), 'count'],
           'category_id'
@@ -313,43 +313,42 @@ class UserStatsService {
         group: ['category_id', 'ChatbotCategory.name']
       });
 
-      // Inicializar contadores
+      // Inicializar estadísticas
       const stats = {
         preguntas_nutricion: 0,
         preguntas_entrenamiento: 0,
         preguntas_recuperacion: 0,
         preguntas_prevencion_lesiones: 0,
         preguntas_equipamiento: 0,
+        score_ponderado: 0,
         total_preguntas: 0
       };
 
-      // Mapear resultados de la consulta
+      // Mapear resultados de la BD a los nombres esperados
       const categoryMapping = {
-        'nutricion': 'preguntas_nutricion',
-        'entrenamiento': 'preguntas_entrenamiento',
-        'recuperacion': 'preguntas_recuperacion',
-        'prevencion': 'preguntas_prevencion_lesiones',
-        'equipamiento': 'preguntas_equipamiento'
+        'Nutrición': 'preguntas_nutricion',
+        'Entrenamiento': 'preguntas_entrenamiento', 
+        'Recuperación': 'preguntas_recuperacion',
+        'Prevención': 'preguntas_prevencion_lesiones',
+        'Equipamiento': 'preguntas_equipamiento'
       };
 
       questionStats.forEach(stat => {
         const categoryName = stat.ChatbotCategory.name;
-        const fieldName = categoryMapping[categoryName];
-        if (fieldName) {
-          const count = parseInt(stat.dataValues.count);
-          stats[fieldName] = count;
-          stats.total_preguntas += count;
+        const mappedKey = categoryMapping[categoryName];
+        if (mappedKey) {
+          stats[mappedKey] = parseInt(stat.dataValues.count);
+          stats.total_preguntas += parseInt(stat.dataValues.count);
         }
       });
 
       // Calcular score ponderado
       stats.score_ponderado = this.calculateWeightedScore(stats);
-      
+
       return stats;
-      
     } catch (error) {
       console.error('❌ Error obteniendo estadísticas del período:', error);
-      throw error;
+      throw new Error(`Error al obtener estadísticas del período: ${error.message}`);
     }
   }
 }
@@ -358,18 +357,16 @@ class UserStatsService {
 const userStatsService = new UserStatsService();
 
 /**
- * Inicializa las categorías del chatbot en la base de datos
+ * Inicializa las categorías en la base de datos
  */
 async function initializeCategories() {
   try {
-    console.log('📋 Inicializando categorías del chatbot...');
-    
     const categories = [
-      { name: 'entrenamiento', weight: 3, description: 'Preguntas sobre rutinas, ejercicios, técnicas' },
-      { name: 'nutricion', weight: 2, description: 'Preguntas sobre alimentación, suplementos' },
-      { name: 'recuperacion', weight: 2, description: 'Preguntas sobre descanso, recuperación' },
-      { name: 'prevencion', weight: 2, description: 'Preguntas sobre prevención de lesiones' },
-      { name: 'equipamiento', weight: 1, description: 'Preguntas sobre ropa, calzado, tecnología' }
+      { name: 'Nutrición' },
+      { name: 'Entrenamiento' },
+      { name: 'Recuperación' },
+      { name: 'Prevención' },
+      { name: 'Equipamiento' }
     ];
 
     for (const category of categories) {
@@ -380,7 +377,6 @@ async function initializeCategories() {
     }
 
     console.log('✅ Categorías inicializadas correctamente');
-    return true;
   } catch (error) {
     console.error('❌ Error inicializando categorías:', error);
     throw error;
